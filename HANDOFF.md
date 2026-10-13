@@ -1,0 +1,83 @@
+# Handoff: Laravel + Vue starter (from beyondBars/invoice)
+
+Same architecture as the original: Laravel API (upgraded from 11 to 13) (`api/`, Sanctum SPA cookie auth, Bouncer roles)
+plus a Vue 3 + Pinia + Vite SPA (`frontend/`), run with `docker-compose.yml`.
+
+## Status
+
+### Backend: DONE and verified
+- `cd api && php vendor/bin/phpunit` passes 62/62 (34 original tests + 28 new security tests).
+- Tests use in-memory SQLite (see phpunit.xml), so they never touch the dev database.
+- 2FA is enforced server-side (`2fa` middleware), the account takeover via email change is fixed,
+  policies are enforced, sign-up requires a verified email, disabled users can't log in, Socialite
+  is safe, rate limits are per user/IP, dead code is removed, and Docker and .env.example work.
+
+### Frontend: DONE and verified
+- `cd frontend && npm run typecheck` and `npm run build` both pass with 0 errors (the build still
+  prints Sass deprecation and font-path warnings from the template's CSS).
+- Account setup after verification validates the signed link on load, creates the account (the API
+  logs the user in) and routes to `redirect` or the dashboard.
+- Users, roles and blogs stores use the API resource types; pagination is read from `meta`.
+  Roles are read-only and unpaginated, matching the API.
+- Account page: details, password and 2FA panels each send only their own fields; changing the 2FA
+  method calls `PUT /two-factor` and routes to `two-factor.setup.<method>?change=1` for verification.
+- `vuex`, `vuex-pathify`, `store`, `sweetalert` and `@types/axios` are removed. `sweetalert2` is now
+  a direct dependency, pinned to 11.4.4 to match (and dedupe with) `vue-sweetalert2`.
+- `phpunit.xml` now sets a test `APP_KEY`, `APP_URL` and `SANCTUM_STATEFUL_DOMAINS`, so the API
+  suite passes without an `api/.env` (it failed 9 tests on a clean checkout before).
+
+### Known leftovers (not wired up)
+- `components/forms/tiptap/Menu/MenuBar.vue` and `Interactive/*` are commented out of
+  `TiptapEditor.vue`. They are written for Quasar (`q-btn`, `q-dialog`) and import a missing
+  `ImageDialog/ImageDialog.vue`, so they only typecheck; re-enabling them needs that work first.
+
+### Laravel 13 upgrade: DONE and verified
+- PHP 8.3+ (Dockerfile later bumped to `php:8.4-fpm`, see below), `laravel/framework` ^13.0, `laravel/tinker` ^3.0,
+  `phpunit/phpunit` ^12.5, `spatie/laravel-query-builder` ^7.0 (`allowed*()` take variadic
+  arguments now, not arrays).
+- Removed `codium/laravel-sms-capture` (stuck on Laravel 11) in favour of
+  `App\Listeners\CaptureOutgoingSms`, and the unused `spatie/laravel-permission` (roles are Bouncer).
+- CSRF middleware is `App\Http\Middleware\PreventRequestForgery` (Laravel 13 rename); Sanctum's
+  config key is `validate_csrf_token`. Cross-port SPA requests still pass via the XSRF token.
+- Adopted the hardened Laravel 13 defaults: cache `serializable_classes => false` and session
+  `serialization => json` (existing sessions are logged out once).
+- 62/62 tests pass; also smoke-tested with `artisan serve` + SQLite (CSRF cookie flow, login, user
+  filters/sorts, roles include, blogs, SMS capture).
+
+See README.md for setup.
+
+### Starter conversion (branch `starter-tailwind`)
+- Removed the demo blog feature (API model, controller, policy, requests, resources, migration, factory,
+  seeder, tests; SPA views, store, types, routes) and the `blogger` / `invoicer` roles.
+- Frontend moved from Creative Tim Material Dashboard (Bootstrap + Sass) to Tailwind CSS 4
+  (`@tailwindcss/vite`). Shared building blocks (`.btn`, `.form-input`, `.card`, ...) and the brand colours
+  live in `frontend/src/assets/css/app.css`. Auth screens share `components/auth/AuthCard.vue`; app pages use
+  `components/app/PageHeader.vue`. The app shell has a mobile menu.
+- Removed Tiptap, the template's JS/SCSS/fonts/demo images, `sass`, `@popperjs/core`, `font-awesome` 4 and
+  `@types/bootstrap`. Icons are Font Awesome SVG icons registered in `main.js`.
+- `vite.config.js` is now `vite.config.mjs` (`@tailwindcss/vite` is ESM-only).
+- Fixed: the 2FA email used a non-existent `mail::code` component, so every 2FA email failed to send. Now
+  `mail::panel`, with a test that renders the email (`Notification::fake()` never rendered it).
+- Docker image is `php:8.4-fpm`; `composer.json` still allows `^8.3`.
+- 51/51 API tests pass; `npm run typecheck` and `npm run build` pass. Sign-in, 2FA setup and verification,
+  dashboard, users, account and settings were checked in a browser at desktop and phone widths.
+
+## Getting started (dev)
+```
+cp api/.env.example api/.env
+docker compose build
+docker compose run --rm fpm composer install
+docker compose run --rm fpm php artisan key:generate
+docker compose up -d
+docker compose exec fpm php artisan migrate --seed
+```
+- SPA: http://localhost:8080
+- API: http://localhost:8000
+- Emails (MailDev): http://localhost:8025
+- Seeded logins: admin@example.com / Secret*12345 (super admin), user@example.com / Secret*12345
+- With APP_ENV=local, SMS codes are captured instead of sent and show up in api/storage/logs/laravel.log
+  (`App\Listeners\CaptureOutgoingSms`).
+
+## SECURITY
+The original repo committed `ec2-pem.pem` (an RSA private key). Rotate that EC2 key pair and purge
+it from git history (git filter-repo / BFG). It is removed here and `*.pem` is gitignored.

@@ -1,0 +1,77 @@
+volumes:
+  dbdata:
+  node_modules:
+
+services:
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "33061:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: invoice
+      MYSQL_USER: invoice
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: secret
+    command: ['--innodb_flush_log_at_trx_commit=2']
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-psecret"]
+      interval: 5s
+      retries: 20
+
+  # PHP-FPM running the Laravel API.
+  fpm:
+    build:
+      context: ./api
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./api:/var/www
+    environment:
+      CONTAINER_ROLE: app
+    user: ubuntu
+
+  # Queue worker (only needed when QUEUE_CONNECTION=database).
+  queue:
+    build:
+      context: ./api
+    depends_on:
+      - fpm
+    volumes:
+      - ./api:/var/www
+    environment:
+      CONTAINER_ROLE: queue
+    user: ubuntu
+    profiles: ["queue"]
+
+  # Nginx in front of FPM: the API is served on http://localhost:8000
+  api:
+    image: nginx:1.27-alpine
+    ports:
+      - "8000:80"
+    depends_on:
+      - fpm
+    volumes:
+      - ./api:/var/www
+      - ./api/docker/nginx/vhost.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # Vue SPA (Vite dev server): http://localhost:8080
+  vue:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./frontend/:/home/node/app
+      - node_modules:/home/node/node_modules
+    user: node
+    restart: on-failure
+
+  # Catches all outgoing email: http://localhost:8025
+  mail:
+    image: maildev/maildev
+    ports:
+      - "8025:80"
+    command: bin/maildev --web 80 --smtp 25 --hide-extensions STARTTLS

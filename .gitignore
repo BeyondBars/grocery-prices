@@ -1,0 +1,12 @@
+# Secrets - never commit keys or environment files
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+!frontend/.env.development
+
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
