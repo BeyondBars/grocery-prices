@@ -33,7 +33,7 @@ enum UserRole: string
     {
         return match ($this) {
             self::SuperAdmin => UserAbility::forRole($this),
-            self::Staff => [UserAbility::ReadUsers->value],
+            self::Staff => [UserAbility::ReadUsers->value, UserAbility::ManageCatalog->value],
             self::User => [],
         };
     }

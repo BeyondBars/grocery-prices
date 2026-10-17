@@ -3,6 +3,7 @@ import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon as fa } from '@fortawesome/vue-fontawesome'
 import {
   faBars,
+  faBasketShopping,
   faChevronLeft,
   faCircleUser,
   faEllipsis,
@@ -12,7 +13,11 @@ import {
   faHouse,
   faMagnifyingGlass,
   faPaperPlane,
+  faPen,
+  faPlus,
   faRightFromBracket,
+  faStore,
+  faTrash,
   faUsers,
   faXmark,
 } from '@fortawesome/free-solid-svg-icons'
@@ -34,6 +39,7 @@ import moment from 'moment'
 // Add icons to the library
 library.add(
   faBars,
+  faBasketShopping,
   faChevronLeft,
   faCircleUser,
   faEllipsis,
@@ -43,7 +49,11 @@ library.add(
   faHouse,
   faMagnifyingGlass,
   faPaperPlane,
+  faPen,
+  faPlus,
   faRightFromBracket,
+  faStore,
+  faTrash,
   faUsers,
   faXmark,
   faFacebookF,

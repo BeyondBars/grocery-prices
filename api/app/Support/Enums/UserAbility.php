@@ -7,6 +7,7 @@ enum UserAbility: string
     case ReadUsers = 'read users';
     case WriteUsers = 'write users';
     case ManageEmailTemplates = 'manage email templates';
+    case ManageCatalog = 'manage catalog';
 
     /**
      * Abilities grouped for display/syncing. "excludes" lists role values that may never hold it.
@@ -20,6 +21,10 @@ enum UserAbility: string
             ],
             'email templates' => [
                 'manage' => ['name' => self::ManageEmailTemplates, 'excludes' => []],
+            ],
+            // Edit or delete any store, brand, category or product (everyone can add them).
+            'catalog' => [
+                'manage' => ['name' => self::ManageCatalog, 'excludes' => []],
             ],
         ];
     }

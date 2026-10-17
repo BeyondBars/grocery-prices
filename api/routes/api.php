@@ -62,5 +62,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/email-templates', [Controllers\EmailTemplateController::class, 'index']);
         Route::get('/email-templates/{template}', [Controllers\EmailTemplateController::class, 'show']);
         Route::post('/email-templates/{template}/test', [Controllers\EmailTemplateController::class, 'sendTest'])->middleware('throttle:test-emails');
+
+        // Catalog (shared by all users; see the catalog policies for who can edit what)
+        Route::apiResource('stores', Controllers\StoreController::class);
+        Route::apiResource('brands', Controllers\BrandController::class)->except('show');
+        Route::apiResource('categories', Controllers\CategoryController::class)->except('show');
+        Route::apiResource('products', Controllers\ProductController::class);
+
+        // Receipts (private to the user who uploaded them)
+        Route::apiResource('receipts', Controllers\ReceiptController::class)->except('store');
+        Route::put('/receipt-items/{receiptItem}', [Controllers\ReceiptItemController::class, 'update']);
     });
 });

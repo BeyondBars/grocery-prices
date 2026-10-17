@@ -15,6 +15,8 @@
 
     <nav class="flex flex-1 flex-col gap-1 px-3">
       <SidebarItem :to="{ name: 'dashboard' }" icon="house">Dashboard</SidebarItem>
+      <SidebarItem :to="{ name: 'products' }" icon="basket-shopping">Products</SidebarItem>
+      <SidebarItem :to="{ name: 'stores' }" icon="store">Stores</SidebarItem>
       <SidebarItem :to="{ name: 'users' }" icon="users">User Management</SidebarItem>
       <SidebarItem v-if="can('manage email templates')" :to="{ name: 'email-templates' }" icon="envelope">Email Templates</SidebarItem>
       <SidebarItem :to="{ name: 'settings' }" icon="gear">Settings</SidebarItem>
