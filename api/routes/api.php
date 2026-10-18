@@ -70,7 +70,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::apiResource('products', Controllers\ProductController::class);
 
         // Receipts (private to the user who uploaded them)
+        Route::post('/receipts', [Controllers\ReceiptController::class, 'store'])->middleware('throttle:receipt-uploads');
         Route::apiResource('receipts', Controllers\ReceiptController::class)->except('store');
+        Route::get('/receipts/{receipt}/file', [Controllers\ReceiptController::class, 'file']);
+        Route::post('/receipts/{receipt}/reprocess', [Controllers\ReceiptController::class, 'reprocess'])->middleware('throttle:receipt-uploads');
         Route::put('/receipt-items/{receiptItem}', [Controllers\ReceiptItemController::class, 'update']);
     });
 });

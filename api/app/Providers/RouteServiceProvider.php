@@ -49,5 +49,15 @@ class RouteServiceProvider extends ServiceProvider
 
             return [Limit::perMinute(5)->by($key), Limit::perHour(20)->by($key.':h')];
         });
+
+        // Receipt uploads and reprocessing, which cost OCR money.
+        RateLimiter::for('receipt-uploads', function (Request $request) {
+            $key = 'receipts:'.$request->user()?->id;
+
+            return [Limit::perMinute(10)->by($key), Limit::perHour(100)->by($key.':h')];
+        });
+
+        // OCR calls from the queue, across all workers, to stay inside the provider's limits.
+        RateLimiter::for('ocr', fn () => Limit::perMinute((int) config('receipts.ocr_per_minute')));
     }
 }

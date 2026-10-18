@@ -33,7 +33,7 @@ services:
       CONTAINER_ROLE: app
     user: ubuntu
 
-  # Queue worker (only needed when QUEUE_CONNECTION=database).
+  # Queue worker: reads uploaded receipts (QUEUE_CONNECTION=database).
   queue:
     build:
       context: ./api
@@ -44,7 +44,20 @@ services:
     environment:
       CONTAINER_ROLE: queue
     user: ubuntu
-    profiles: ["queue"]
+    restart: unless-stopped
+
+  # Runs scheduled tasks, e.g. removing receipts deleted more than 30 days ago.
+  scheduler:
+    build:
+      context: ./api
+    depends_on:
+      - fpm
+    volumes:
+      - ./api:/var/www
+    environment:
+      CONTAINER_ROLE: scheduler
+    user: ubuntu
+    restart: unless-stopped
 
   # Nginx in front of FPM: the API is served on http://localhost:8000
   api:

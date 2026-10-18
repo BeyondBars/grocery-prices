@@ -40,10 +40,30 @@ Item: `pending, auto_matched, suggested, confirmed, new_product, ignored`. Only 
 
 ## Receipt pipeline (Phase 3)
 
-One queued job, `ProcessReceipt`, calls small classes in order: OCR (`OcrEngine` interface; text
-PDFs via `pdftotext`, photos via AWS Textract AnalyzeExpense) → `ReceiptParser` → store
-identification (ABN, then aliases) → `ProductMatcher` → price observations. OCR text is saved
-before parsing so a re-run never pays for OCR twice. Retries with backoff; `failed()` records why.
+`POST /receipts` (multipart, up to 10 files of 10 MB) stores each file on the private
+`receipts.disk` under `receipts/{user}/`, then queues `App\Jobs\ProcessReceipt`:
+
+1. **Upload** (`App\Receipts\ReceiptUploader`): photos are turned upright, shrunk to 2000px and
+   re-encoded as JPEG, which also strips EXIF/GPS data. The same file twice is reported as a duplicate.
+2. **Read** (`ReceiptReader`): PDFs with a text layer use `pdftotext` (free); everything else goes
+   to the `OcrEngine` (`textract` = AWS Textract AnalyzeExpense, `none` = photos fail with a clear
+   message). Card numbers are masked. The OCR result is saved before parsing, so "Read again"
+   never pays for OCR twice.
+3. **Parse** (`TextReceiptParser`): ABN, date, receipt number, totals and items, including
+   quantity lines, weighed items and discount lines. Warns when items don't add up to the total.
+4. **Store** (`StoreIdentifier`): by ABN, else the longest store alias in the header.
+5. Items are saved as `pending` and the receipt goes to **Needs review**. (Phase 4 adds matching.)
+
+Known problems (unreadable file, no OCR configured) fail at once with a message for the user;
+other errors retry 3 times with backoff. OCR calls are rate limited across workers
+(`RECEIPTS_OCR_PER_MINUTE`). Deleted receipts are pruned with their files after 30 days.
+
+### Turning on photo OCR
+
+1. In AWS, allow `textract:AnalyzeExpense` for the app's IAM role (or an IAM user).
+2. In `api/.env`: `RECEIPTS_OCR_ENGINE=textract`, `AWS_DEFAULT_REGION=ap-southeast-2`, and the
+   `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` pair unless running on AWS with an instance role.
+3. `QUEUE_CONNECTION=database` and a running worker (`docker compose up -d queue`).
 
 ## Matching (Phase 4)
 
@@ -58,7 +78,7 @@ AI (Phase 8) only looks at the uncertain band, one line plus its candidates, nev
 
 1. Design ✔
 2. Catalog, receipts, receipt items, price history: schema, API, Stores and Products pages ✔
-3. Receipt upload + OCR + queue worker
+3. Receipt upload + OCR + queue worker ✔
 4. Product matching + review screen
 5. Price comparison + history chart
 6. Shopping lists (per-store totals, split shop)

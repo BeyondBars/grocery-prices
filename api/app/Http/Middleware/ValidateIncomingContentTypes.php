@@ -16,6 +16,7 @@ class ValidateIncomingContentTypes
      */
     protected $except = [
         // Add multipart/file-upload endpoints here, e.g. 'invoices/*/attachments'.
+        'receipts',
     ];
 
     /**

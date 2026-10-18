@@ -3,15 +3,19 @@
 namespace App\Models;
 
 use App\Support\Enums\ReceiptStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Receipt extends Model
 {
     use HasFactory;
+    use Prunable;
     use SoftDeletes;
 
     protected $fillable = [
@@ -41,6 +45,19 @@ class Receipt extends Model
         });
 
         static::restored(fn (Receipt $receipt) => $receipt->syncPriceObservations());
+
+        static::forceDeleted(function (Receipt $receipt) {
+            $receipt->file_path && Storage::disk(config('receipts.disk'))->delete($receipt->file_path);
+        });
+    }
+
+    /**
+     * Deleted receipts can be restored for 30 days, then they and their files are removed for good
+     * (php artisan model:prune, scheduled daily).
+     */
+    public function prunable(): Builder
+    {
+        return static::onlyTrashed()->where('deleted_at', '<', now()->subDays(30));
     }
 
     public function user(): BelongsTo

@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
         unzip \
         default-mysql-client \
+        poppler-utils \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd opcache pdo_mysql bcmath zip intl \
     && pecl install pcov \
