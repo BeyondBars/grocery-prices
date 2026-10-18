@@ -8,6 +8,10 @@ use App\Models\PriceObservation;
 use App\Models\Product;
 use App\Models\ProductAlias;
 use App\Models\ReceiptItem;
+use App\Models\User;
+use App\Pricing\ProductPriceSummary;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -17,24 +21,73 @@ use Spatie\QueryBuilder\QueryBuilder;
 
 class ProductController extends Controller
 {
-    public function index()
+    /**
+     * Products with the cheapest latest price the user has seen for each. "filter[priced]=1"
+     * lists only products the user has prices for.
+     */
+    public function index(Request $request)
     {
-        return ProductResource::collection(
-            QueryBuilder::for(Product::active()->with('brand', 'category'))
-                ->allowedFilters(
-                    AllowedFilter::exact('brand', 'brand_id'),
-                    AllowedFilter::exact('category', 'category_id'),
-                    AllowedFilter::callback('search', function ($query, $value) {
-                        $query->where(function ($query) use ($value) {
-                            $query->where('match_key', 'like', '%'.Product::normalise($value).'%')
-                                ->orWhere('barcode', $value);
-                        });
-                    }),
-                )
-                ->allowedSorts('name', 'created_at')
-                ->defaultSort('name')
-                ->paginate(25)
-        );
+        $products = QueryBuilder::for(Product::active()->with('brand', 'category'))
+            ->allowedFilters(
+                AllowedFilter::exact('brand', 'brand_id'),
+                AllowedFilter::exact('category', 'category_id'),
+                AllowedFilter::callback('priced', fn ($query, $value) => $value && $query->whereHas(
+                    'priceObservations',
+                    fn ($query) => $query->visibleTo($request->user())
+                )),
+                AllowedFilter::callback('search', function ($query, $value) {
+                    $query->where(function ($query) use ($value) {
+                        $query->where('match_key', 'like', '%'.Product::normalise($value).'%')
+                            ->orWhere('barcode', $value);
+                    });
+                }),
+            )
+            ->allowedSorts('name', 'created_at')
+            ->defaultSort('name')
+            ->paginate(25);
+
+        $this->attachCheapestPrices($products->getCollection(), $request->user());
+
+        return ProductResource::collection($products);
+    }
+
+    /**
+     * Latest price at each store, cheapest first, with lowest / highest / average.
+     */
+    public function prices(Request $request, Product $product): JsonResponse
+    {
+        return response()->json(['data' => (new ProductPriceSummary($product, $request->user()))->toArray()]);
+    }
+
+    /**
+     * Every recorded price over time, grouped by store, for the price chart.
+     */
+    public function priceHistory(Request $request, Product $product): JsonResponse
+    {
+        return response()->json(['data' => (new ProductPriceSummary($product, $request->user()))->history()]);
+    }
+
+    /**
+     * One query for the whole page: each product's cheapest latest store price, preferring
+     * prices that aren't out of date.
+     */
+    private function attachCheapestPrices(Collection $products, User $user): void
+    {
+        $staleBefore = now()->subDays(config('pricing.stale_after_days'))->startOfDay();
+
+        $cheapest = PriceObservation::latestPerStore($user, $products->modelKeys())
+            ->with('store')
+            ->get()
+            ->sortBy([fn ($a, $b) => $a->observed_on->lt($staleBefore) <=> $b->observed_on->lt($staleBefore), ['price_cents', 'asc']])
+            ->groupBy('product_id')
+            ->map(fn ($prices) => [
+                'price_cents' => $prices->first()->price_cents,
+                'unit' => $prices->first()->unit->value,
+                'store' => ['id' => $prices->first()->store->id, 'name' => $prices->first()->store->name],
+                'stores_count' => $prices->count(),
+            ]);
+
+        $products->each(fn (Product $product) => $product->cheapest_price = $cheapest->get($product->id));
     }
 
     public function show(Product $product): ProductResource

@@ -8,6 +8,12 @@ const catalog: RouteRecordRaw[] = createRoutes({ template: 'app', restricted: tr
     component: () => import('@/views/products/Products.vue'),
   },
   {
+    path: '/products/:id',
+    name: 'products.prices',
+    props: true,
+    component: () => import('@/views/products/ProductPrices.vue'),
+  },
+  {
     path: '/stores',
     name: 'stores',
     component: () => import('@/views/stores/Stores.vue'),

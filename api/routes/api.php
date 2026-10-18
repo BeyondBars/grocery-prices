@@ -69,6 +69,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::apiResource('categories', Controllers\CategoryController::class)->except('show');
         Route::apiResource('products', Controllers\ProductController::class);
         Route::post('/products/{product}/merge', [Controllers\ProductController::class, 'merge']);
+        Route::get('/products/{product}/prices', [Controllers\ProductController::class, 'prices']);
+        Route::get('/products/{product}/price-history', [Controllers\ProductController::class, 'priceHistory']);
 
         // Receipts (private to the user who uploaded them)
         Route::post('/receipts', [Controllers\ReceiptController::class, 'store'])->middleware('throttle:receipt-uploads');

@@ -5,6 +5,11 @@ export function formatCents(cents: number | null | undefined): string {
   return `${cents < 0 ? '-' : ''}$${(Math.abs(cents) / 100).toFixed(2)}`
 }
 
+/** 450, 'kg' => "$4.50/kg"; 'each' => "$4.50". */
+export function formatPrice(cents: number | null | undefined, unit?: 'each' | 'kg' | null): string {
+  return formatCents(cents) + (unit === 'kg' ? '/kg' : '')
+}
+
 /** "4.50" or "$4.50" => 450. Returns null for anything that isn't an amount. */
 export function toCents(value: string | number | null | undefined): number | null {
   const amount = Number(String(value ?? '').replace(/[$,\s]/g, ''))

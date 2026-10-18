@@ -92,13 +92,35 @@ pending or suggested lines; only matched lines count towards price history.
 Catalog managers merge duplicates (`POST /products/{id}/merge`): receipt lines, prices and
 wordings move to the kept product; the duplicate stays with `merged_into_id`.
 
+## Price comparison (Phase 5)
+
+`App\Pricing\ProductPriceSummary` answers "where is this cheapest for me?" from the prices a user
+may see (`PriceObservation::visibleTo`: their own receipts plus prices that belong to nobody, such
+as future online prices; other users' receipts stay private).
+
+- **Latest price at each store**, cheapest first, with the previous price (to show a change),
+  special/regular price, and an out-of-date flag (`PRICES_STALE_AFTER_DAYS`, default 60).
+- **Cheapest store, saving** (vs the dearest store) and **average** (of each store's latest price)
+  only use current prices, so an old special can't claim a store is cheapest today. If every price
+  is out of date they're compared anyway.
+- **Lowest / highest recorded** use the whole history.
+- Per-kg and per-item prices are never compared: the summary uses the unit of the latest price.
+
+`PriceObservation::latestPerStore()` gets the latest price per product and store in one query
+(`ROW_NUMBER()` window), used for the product list's cheapest price and reusable for shopping lists.
+
+Endpoints: `GET /products/{id}/prices`, `GET /products/{id}/price-history`,
+`GET /products?filter[priced]=1` (only products the user has prices for).
+
+The product page draws price history with Chart.js on a real time axis, one fixed colour per store.
+
 ## Phases
 
 1. Design ✔
 2. Catalog, receipts, receipt items, price history: schema, API, Stores and Products pages ✔
 3. Receipt upload + OCR + queue worker ✔
 4. Product matching + review screen ✔
-5. Price comparison + history chart
+5. Price comparison + history chart ✔
 6. Shopping lists (per-store totals, split shop)
 7. Dashboard
 8. AI-assisted matching

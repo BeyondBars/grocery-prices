@@ -1,3 +1,5 @@
+import type { CheapestPrice } from './pricing'
+
 /** What the signed in user may do with a catalog entry (from the API policies). */
 export type CatalogPermissions = { update: boolean; delete: boolean; merge?: boolean }
 
@@ -40,6 +42,8 @@ export type ProductResource = {
   merged_into_id: number | null
   brand?: BrandResource | null
   category?: CategoryResource | null
+  /** Only on the product list. */
+  cheapest_price?: CheapestPrice | null
   can: CatalogPermissions
 }
 

@@ -2,11 +2,14 @@ import { defineStore } from 'pinia'
 import { http } from '@/utils/http'
 import type { Paginated } from '@/types/user'
 import type { ProductPayload, ProductResource } from '@/types/catalog'
+import type { PriceHistorySeries, PriceSummary } from '@/types/pricing'
 
 export const useProductStore = defineStore('products', {
   state: () => ({
     products: [] as ProductResource[],
     search: '',
+    /** Only products the user has bought (has prices for). */
+    onlyPriced: false,
     page: 1,
     lastPage: 1,
     total: 0,
@@ -19,7 +22,7 @@ export const useProductStore = defineStore('products', {
 
       try {
         const { data } = await http.get<Paginated<ProductResource>>('products', {
-          params: { page, 'filter[search]': this.search || undefined },
+          params: { page, 'filter[search]': this.search || undefined, 'filter[priced]': this.onlyPriced ? 1 : undefined },
         })
 
         this.products = data.data
@@ -38,6 +41,21 @@ export const useProductStore = defineStore('products', {
 
       await this.fetchProducts(this.page)
 
+      return data.data
+    },
+
+    async fetchProduct(id: number | string) {
+      const { data } = await http.get<{ data: ProductResource }>(`products/${id}`)
+      return data.data
+    },
+
+    async fetchPrices(id: number | string) {
+      const { data } = await http.get<{ data: PriceSummary }>(`products/${id}/prices`)
+      return data.data
+    },
+
+    async fetchPriceHistory(id: number | string) {
+      const { data } = await http.get<{ data: PriceHistorySeries[] }>(`products/${id}/price-history`)
       return data.data
     },
 
