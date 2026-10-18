@@ -8,6 +8,7 @@ use App\Models\PriceObservation;
 use App\Models\Product;
 use App\Models\ProductAlias;
 use App\Models\ReceiptItem;
+use App\Models\ShoppingListItem;
 use App\Models\User;
 use App\Pricing\ProductPriceSummary;
 use Illuminate\Database\Eloquent\Collection;
@@ -73,12 +74,10 @@ class ProductController extends Controller
      */
     private function attachCheapestPrices(Collection $products, User $user): void
     {
-        $staleBefore = now()->subDays(config('pricing.stale_after_days'))->startOfDay();
-
         $cheapest = PriceObservation::latestPerStore($user, $products->modelKeys())
             ->with('store')
             ->get()
-            ->sortBy([fn ($a, $b) => $a->observed_on->lt($staleBefore) <=> $b->observed_on->lt($staleBefore), ['price_cents', 'asc']])
+            ->sortBy([fn ($a, $b) => $a->isStale() <=> $b->isStale(), ['price_cents', 'asc']])
             ->groupBy('product_id')
             ->map(fn ($prices) => [
                 'price_cents' => $prices->first()->price_cents,
@@ -133,6 +132,7 @@ class ProductController extends Controller
             ReceiptItem::where('suggested_product_id', $product->id)->update(['suggested_product_id' => $into->id]);
             PriceObservation::where('product_id', $product->id)->update(['product_id' => $into->id]);
             ProductAlias::where('product_id', $product->id)->update(['product_id' => $into->id]);
+            ShoppingListItem::where('product_id', $product->id)->update(['product_id' => $into->id]);
 
             $barcode = $product->barcode;
             $product->forceFill(['merged_into_id' => $into->id, 'barcode' => null])->save();

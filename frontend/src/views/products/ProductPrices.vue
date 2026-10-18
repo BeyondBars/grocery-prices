@@ -5,6 +5,7 @@
         <RouterLink :to="{ name: 'products' }" class="link-muted"><FontAwesomeIcon icon="chevron-left" class="mr-1" />Products</RouterLink>
         <span v-if="product.category"> · {{ product.category.name }}</span>
       </template>
+      <AddToListButton :product-id="product.id" />
     </PageHeader>
 
     <p v-if="summary && !summary.stores.length" class="card px-4 py-10 text-center text-sm text-slate-500">
@@ -103,6 +104,7 @@ import { computed, onMounted, ref } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import PageHeader from '@/components/app/PageHeader.vue'
 import PriceHistoryChart from '@/components/pricing/PriceHistoryChart.vue'
+import AddToListButton from '@/components/shopping/AddToListButton.vue'
 import { useCatalogStore } from '@/stores/catalog'
 import { useProductStore } from '@/stores/products'
 import { formatCents, formatPrice } from '@/utils/money'

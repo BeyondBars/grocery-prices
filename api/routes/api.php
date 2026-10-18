@@ -80,5 +80,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/receipt-items/{receiptItem}', [Controllers\ReceiptItemController::class, 'update']);
         Route::get('/receipt-items/{receiptItem}/candidates', [Controllers\ReceiptItemController::class, 'candidates']);
         Route::post('/receipt-items/{receiptItem}/match', [Controllers\ReceiptItemController::class, 'match']);
+
+        // Shopping lists (private to the user who made them)
+        Route::apiResource('shopping-lists', Controllers\ShoppingListController::class);
+        Route::get('/shopping-lists/{shopping_list}/comparison', [Controllers\ShoppingListController::class, 'comparison']);
+        Route::post('/shopping-lists/{shopping_list}/items', [Controllers\ShoppingListItemController::class, 'store']);
+        Route::put('/shopping-lists/{shopping_list}/items/{item}', [Controllers\ShoppingListItemController::class, 'update']);
+        Route::delete('/shopping-lists/{shopping_list}/items/{item}', [Controllers\ShoppingListItemController::class, 'destroy']);
     });
 });

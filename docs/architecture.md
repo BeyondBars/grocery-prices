@@ -114,6 +114,24 @@ Endpoints: `GET /products/{id}/prices`, `GET /products/{id}/price-history`,
 
 The product page draws price history with Chart.js on a real time axis, one fixed colour per store.
 
+## Shopping lists (Phase 6)
+
+Private lists (`shopping_lists`, `shopping_list_items`) hold products or plain notes ("Bread") that
+can be linked to a product later. Adding a product that's already on the list adds to its quantity.
+
+`App\Pricing\ShoppingListComparison` prices the list from each product's latest price per store
+(current prices preferred, as on the product page), times the quantity:
+
+- **Store totals**, each with the items it has no price for. Only stores with a price for every
+  priced item can be **cheapest overall**, so a store can't win by missing the expensive things.
+  **Potential saving** is against the dearest complete store.
+- **Split shop**: each item at its cheapest store (ties go to the cheapest single store), grouped
+  into stops, with the saving against the cheapest single store.
+- Items with no price anywhere are listed separately.
+
+Endpoints: `apiResource /shopping-lists`, `GET /shopping-lists/{id}/comparison`,
+`POST|PUT|DELETE /shopping-lists/{id}/items[/{item}]`. Merging products moves list items too.
+
 ## Phases
 
 1. Design ✔
@@ -121,7 +139,7 @@ The product page draws price history with Chart.js on a real time axis, one fixe
 3. Receipt upload + OCR + queue worker ✔
 4. Product matching + review screen ✔
 5. Price comparison + history chart ✔
-6. Shopping lists (per-store totals, split shop)
+6. Shopping lists (per-store totals, split shop) ✔
 7. Dashboard
 8. AI-assisted matching
 9. Online supermarket prices and promotions

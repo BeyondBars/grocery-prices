@@ -90,10 +90,8 @@ class ProductPriceSummary
      */
     private function latestPerStore(Collection $history): Collection
     {
-        $staleBefore = now()->subDays(config('pricing.stale_after_days'))->startOfDay();
-
         return $history->groupBy('store_id')
-            ->map(function (Collection $prices) use ($staleBefore) {
+            ->map(function (Collection $prices) {
                 $latest = $prices->last();
                 $previous = $prices->slice(0, -1)->last();
 
@@ -102,7 +100,7 @@ class ProductPriceSummary
                     'regular_price_cents' => $latest->regular_price_cents,
                     'is_promotion' => $latest->is_promotion,
                     'previous_price_cents' => $previous?->price_cents,
-                    'is_stale' => $latest->observed_on->lt($staleBefore),
+                    'is_stale' => $latest->isStale(),
                 ];
             })
             ->sortBy([['is_stale', 'asc'], ['price_cents', 'asc'], ['observed_on', 'desc']])

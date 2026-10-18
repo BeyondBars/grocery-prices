@@ -17,6 +17,7 @@
       <SidebarItem :to="{ name: 'dashboard' }" icon="house">Dashboard</SidebarItem>
       <SidebarItem :to="{ name: 'receipts' }" icon="receipt">Receipts</SidebarItem>
       <SidebarItem :to="{ name: 'products' }" icon="basket-shopping">Products</SidebarItem>
+      <SidebarItem :to="{ name: 'shopping-lists' }" icon="list-check">Shopping lists</SidebarItem>
       <SidebarItem :to="{ name: 'stores' }" icon="store">Stores</SidebarItem>
       <SidebarItem :to="{ name: 'users' }" icon="users">User Management</SidebarItem>
       <SidebarItem v-if="can('manage email templates')" :to="{ name: 'email-templates' }" icon="envelope">Email Templates</SidebarItem>

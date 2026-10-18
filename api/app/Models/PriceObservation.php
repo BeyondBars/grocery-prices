@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\Enums\ItemUnit;
 use App\Support\Enums\PriceSource;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -31,6 +32,19 @@ class PriceObservation extends Model
             'observed_on' => 'date',
             'valid_until' => 'date',
         ];
+    }
+
+    /**
+     * Prices recorded before this day are out of date: the shelf price may have changed since.
+     */
+    public static function staleBefore(): Carbon
+    {
+        return now()->subDays(config('pricing.stale_after_days'))->startOfDay();
+    }
+
+    public function isStale(): bool
+    {
+        return $this->observed_on->lt(static::staleBefore());
     }
 
     /**
