@@ -59,7 +59,8 @@ class PriceHistoryTest extends TestCase
 
         $item->syncPriceObservation();
 
-        $this->assertDatabaseHas('price_observations', ['receipt_item_id' => $item->id, 'price_cents' => 489, 'unit' => 'kg']);
+        // The printed $4.90/kg, not $3.70 / 0.756 kg = $4.89.
+        $this->assertDatabaseHas('price_observations', ['receipt_item_id' => $item->id, 'price_cents' => 490, 'unit' => 'kg']);
     }
 
     public function testUnmatchedSuggestedAndIgnoredItemsHaveNoPrice()

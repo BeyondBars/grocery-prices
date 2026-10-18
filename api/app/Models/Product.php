@@ -75,6 +75,16 @@ class Product extends Model
         $query->whereNull('merged_into_id');
     }
 
+    /**
+     * Size text as typed ("2 LT", "700g") as model attributes in base units.
+     */
+    public static function sizeAttributes(?string $size): array
+    {
+        $parsed = Size::parse($size);
+
+        return ['size_amount' => $parsed?->amount, 'size_unit' => $parsed?->unit];
+    }
+
     public function size(): ?Size
     {
         return $this->size_amount !== null && $this->size_unit ? new Size($this->size_amount, $this->size_unit) : null;

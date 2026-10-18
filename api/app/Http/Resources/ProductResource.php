@@ -24,6 +24,7 @@ class ProductResource extends JsonResource
             'can' => [
                 'update' => $request->user()?->can('update', $this->resource) ?? false,
                 'delete' => $request->user()?->can('delete', $this->resource) ?? false,
+                'merge' => $request->user()?->can('merge', $this->resource) ?? false,
             ],
         ];
     }

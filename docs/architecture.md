@@ -67,19 +67,37 @@ other errors retry 3 times with backoff. OCR calls are rate limited across worke
 
 ## Matching (Phase 4)
 
-Normalise the line and parse brand/size/variant (`App\Support\Size` parses "2 LT", "700G", "1.25L").
-Exact barcode/SKU or confirmed alias → 100. Otherwise score candidates: a different size or pack
-count disqualifies; a variant conflict (LIGHT vs FULL CREAM, ZERO vs regular) caps the score;
-brand, token similarity and category add to it. ≥ 95 auto-match, 70–94 suggest, < 70 review /
-new product (thresholds in `config/matching.php`). Never auto-match when the top two are close.
-AI (Phase 8) only looks at the uncertain band, one line plus its candidates, never whole receipts.
+`App\Matching\LineNormaliser` turns a line or product into what matching compares: abbreviations
+expanded (`config/matching.php`: FC → FULL CREAM, LITE → LIGHT…), size standardised ("2 LTR" → 2L),
+pack count ("12PK"), brand (from `brands.aliases`), variant markers (FULL CREAM, LIGHT, ZERO SUGAR…)
+and the remaining words.
+
+`RuleBasedProductMatcher` (behind the `ProductMatcher` interface, so an AI matcher can wrap it later):
+
+1. **Exact:** barcode/SKU, or a wording a user confirmed before: 100 at the same store, 97 elsewhere.
+   Merged products are followed to the one still in use.
+2. **Rules out:** a different size or pack count scores 0. A different variant or brand caps at 40.
+3. **Scores:** word similarity (Dice, tolerating 1-letter OCR slips) up to 60, same brand 25,
+   same size 15. A size on only one side caps at 90, so it can't auto-match.
+4. **Decides** (`ReceiptItemMatcher`): ≥ 95 with a clear winner (runner-up 5+ points behind) →
+   auto-matched; ≥ 70 → suggested; otherwise the user chooses. Thresholds: `MATCH_AUTO`, `MATCH_SUGGEST`.
+
+On the review screen the user confirms a suggestion, picks another product, creates a new one
+(pre-filled from the line; refused if the same brand/name/variant/size already exists) or marks
+the line "not a product". Each confirmation is saved as a `product_aliases` row, and the user's
+other receipts waiting on the same wording at that store match straight away. Automatic matching
+never overrides a user's decision. A receipt is **Completed** once it has a store, a date and no
+pending or suggested lines; only matched lines count towards price history.
+
+Catalog managers merge duplicates (`POST /products/{id}/merge`): receipt lines, prices and
+wordings move to the kept product; the duplicate stays with `merged_into_id`.
 
 ## Phases
 
 1. Design ✔
 2. Catalog, receipts, receipt items, price history: schema, API, Stores and Products pages ✔
 3. Receipt upload + OCR + queue worker ✔
-4. Product matching + review screen
+4. Product matching + review screen ✔
 5. Price comparison + history chart
 6. Shopping lists (per-store totals, split shop)
 7. Dashboard

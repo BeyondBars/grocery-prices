@@ -59,5 +59,15 @@ export const useCatalogStore = defineStore('catalog', {
       const { data } = await http.post<{ data: BrandResource }>('brands', { name })
       return data.data
     },
+
+    /** The id of the brand with this name, creating the brand when it's new. Empty name => null. */
+    async brandIdFor(name: string | null) {
+      const trimmed = name?.trim()
+      if (!trimmed) return null
+
+      const existing = (await this.searchBrands(trimmed)).find((brand) => brand.name.toLowerCase() === trimmed.toLowerCase())
+
+      return existing ? existing.id : (await this.createBrand(trimmed)).id
+    },
   },
 })

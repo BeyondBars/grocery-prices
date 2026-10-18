@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Enums\MatchStatus;
 use App\Support\Enums\ReceiptStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -73,6 +74,22 @@ class Receipt extends Model
     public function items(): HasMany
     {
         return $this->hasMany(ReceiptItem::class)->orderBy('line_number');
+    }
+
+    /**
+     * Completed once the store, date and every line are settled; otherwise it needs review.
+     * Receipts still being read (or that failed) are left alone.
+     */
+    public function refreshStatus(): void
+    {
+        if (!in_array($this->status, [ReceiptStatus::NeedsReview, ReceiptStatus::Completed], true)) {
+            return;
+        }
+
+        $unsettled = $this->items()->whereIn('match_status', [MatchStatus::Pending, MatchStatus::Suggested])->exists();
+        $isComplete = $this->store_id && $this->purchased_at && $this->items()->exists() && !$unsettled;
+
+        $this->update(['status' => $isComplete ? ReceiptStatus::Completed : ReceiptStatus::NeedsReview]);
     }
 
     public function syncPriceObservations(): void

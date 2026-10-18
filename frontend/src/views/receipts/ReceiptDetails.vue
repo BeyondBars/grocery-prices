@@ -34,6 +34,16 @@
           <FontAwesomeIcon icon="triangle-exclamation" class="mr-1" /> {{ warning }}
         </div>
 
+        <div v-if="receipt.status === 'completed'" class="card border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <FontAwesomeIcon icon="check" class="mr-1" /> All done. These prices are now in your price history.
+        </div>
+        <div v-else-if="receipt.status === 'needs_review' && toReview" class="card border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          {{ toReview }} of {{ receipt.items?.length }} lines need you: confirm the suggestion or choose the product.
+        </div>
+        <div v-else-if="receipt.status === 'needs_review'" class="card border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Add the store and date to finish this receipt.
+        </div>
+
         <template v-if="!isBusy && receipt.status !== 'failed'">
           <ReceiptHeaderForm :receipt="receipt" />
 
@@ -90,6 +100,7 @@ const isBusy = computed(() => !!receipt.value && BUSY_STATUSES.includes(receipt.
 const itemsTotal = computed(
   () => (receipt.value?.items ?? []).reduce((sum, item) => sum + item.total_price_cents - item.discount_cents, 0) - (receipt.value?.discount_cents ?? 0)
 )
+const toReview = computed(() => (receipt.value?.items ?? []).filter((item) => ['pending', 'suggested'].includes(item.match_status)).length)
 // A few cents either way is cash rounding.
 const totalsMatch = computed(() => receipt.value?.total_cents === null || Math.abs(itemsTotal.value - (receipt.value?.total_cents ?? 0)) <= 5)
 

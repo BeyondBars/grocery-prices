@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Matching\ReceiptItemMatcher;
 use App\Models\Receipt;
 use App\Receipts\Ocr\OcrResult;
 use App\Receipts\Parsing\ParsedItem;
@@ -21,7 +22,7 @@ use Throwable;
 
 /**
  * Reads an uploaded receipt: OCR (skipped when the receipt already has OCR text), parse,
- * identify the store, then replace the receipt's items with what was read.
+ * identify the store, replace the receipt's items with what was read and match them to products.
  */
 class ProcessReceipt implements ShouldQueue
 {
@@ -53,7 +54,7 @@ class ProcessReceipt implements ShouldQueue
         return [new WithoutOverlapping($this->receipt->id), new RateLimited('ocr')];
     }
 
-    public function handle(ReceiptReader $reader, ReceiptParser $parser, StoreIdentifier $stores): void
+    public function handle(ReceiptReader $reader, ReceiptParser $parser, StoreIdentifier $stores, ReceiptItemMatcher $matcher): void
     {
         $receipt = $this->receipt;
         $receipt->update(['status' => ReceiptStatus::Processing, 'failure_reason' => null]);
@@ -70,7 +71,7 @@ class ProcessReceipt implements ShouldQueue
         $parsed = $parser->parse($ocr);
         $store = $stores->identify($parsed, $ocr->text);
 
-        DB::transaction(function () use ($receipt, $parsed, $store) {
+        DB::transaction(function () use ($receipt, $parsed, $store, $matcher) {
             $receipt->update([
                 'store_id' => $store?->id ?? $receipt->store_id,
                 'purchased_at' => $parsed->purchasedAt ?? $receipt->purchased_at,
@@ -84,6 +85,9 @@ class ProcessReceipt implements ShouldQueue
             ]);
 
             $this->replaceItems($parsed);
+
+            $receipt->load('items')->items->each(fn ($item) => $matcher->autoMatch($item->setRelation('receipt', $receipt)));
+            $receipt->refreshStatus();
         });
     }
 

@@ -65,7 +65,7 @@ class ProductTest extends TestCase
     public function testMergedProductsAreNotListed()
     {
         $kept = Product::factory()->create();
-        Product::factory()->create(['merged_into_id' => $kept->id]);
+        Product::factory()->create()->forceFill(['merged_into_id' => $kept->id])->save();
 
         $this->beUser()->getJson('products')->assertJsonCount(1, 'data');
     }

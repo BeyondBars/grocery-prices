@@ -56,9 +56,15 @@ class ReceiptItem extends Model
 
     /**
      * What was actually paid per unit (each, or per kg) after the line's discount, in cents.
+     * Without a discount the printed unit price is exact; dividing a rounded total by a weight
+     * isn't ($3.70 / 0.756 kg gives $4.89 for bananas priced at $4.90/kg).
      */
     public function paidUnitPriceCents(): int
     {
+        if (!$this->discount_cents && $this->unit_price_cents) {
+            return $this->unit_price_cents;
+        }
+
         $quantity = $this->quantity > 0 ? $this->quantity : 1;
 
         return (int) round(($this->total_price_cents - $this->discount_cents) / $quantity);

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Matching\ProductMatcher;
+use App\Matching\RuleBasedProductMatcher;
 use App\Models\Role;
 use App\Models\User\Ability;
 use App\Receipts\Ocr\NullOcrEngine;
@@ -27,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(Hashids::class, fn () => new Hashids(config('app.key'), 10));
 
         $this->app->bind(ReceiptParser::class, TextReceiptParser::class);
+        $this->app->bind(ProductMatcher::class, RuleBasedProductMatcher::class);
         $this->app->bind(OcrEngine::class, fn () => match (config('receipts.ocr_engine')) {
             'textract' => new TextractOcrEngine(new TextractClient([
                 'version' => '2018-06-27',

@@ -36,6 +36,9 @@
           <button v-if="product.can.update" type="button" class="rounded-md p-2 text-slate-500 hover:bg-slate-100" :aria-label="`Edit ${product.name}`" @click="editing = product">
             <FontAwesomeIcon icon="pen" />
           </button>
+          <button v-if="product.can.merge" type="button" class="rounded-md p-2 text-slate-500 hover:bg-slate-100" :aria-label="`Merge ${product.name} into another product`" title="Merge duplicate" @click="merging = product">
+            <FontAwesomeIcon icon="code-merge" />
+          </button>
           <button v-if="product.can.delete" type="button" class="rounded-md p-2 text-slate-500 hover:bg-red-50 hover:text-red-600" :aria-label="`Delete ${product.name}`" @click="remove(product)">
             <FontAwesomeIcon icon="trash" />
           </button>
@@ -54,6 +57,7 @@
   </div>
 
   <ProductFormModal v-if="editing !== undefined" :product="editing" @close="editing = undefined" @saved="editing = undefined" />
+  <MergeProductModal v-if="merging" :product="merging" @close="merging = null" />
 </template>
 
 <script setup lang="ts">
@@ -62,6 +66,7 @@ import { useDebounceFn } from '@vueuse/core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useToast } from 'vue-toast-notification'
 import PageHeader from '@/components/app/PageHeader.vue'
+import MergeProductModal from '@/components/catalog/MergeProductModal.vue'
 import ProductFormModal from '@/components/catalog/ProductFormModal.vue'
 import { useProductStore } from '@/stores/products'
 import confirm from '@/utils/alert'
@@ -72,6 +77,7 @@ const productStore = useProductStore()
 const toast = useToast()
 /** undefined = form closed, null = adding, a product = editing it. */
 const editing = ref<ProductResource | null | undefined>(undefined)
+const merging = ref<ProductResource | null>(null)
 
 watch(
   () => productStore.search,

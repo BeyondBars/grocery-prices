@@ -35,17 +35,6 @@ const searchBrands = useDebounceFn(async (search: string) => {
 
 watch(() => form.value.brand, searchBrands)
 
-/** The id of the typed brand, creating it when it's new. */
-const resolveBrandId = async (): Promise<number | null> => {
-  const name = form.value.brand.trim()
-  if (!name) return null
-
-  const matches = await catalog.searchBrands(name)
-  const existing = matches.find((brand) => brand.name.toLowerCase() === name.toLowerCase())
-
-  return existing ? existing.id : (await catalog.createBrand(name)).id
-}
-
 const save = async () => {
   isSaving.value = true
   errors.value = {}
@@ -54,7 +43,7 @@ const save = async () => {
     const product = await productStore.saveProduct(
       {
         name: form.value.name,
-        brand_id: await resolveBrandId(),
+        brand_id: await catalog.brandIdFor(form.value.brand),
         category_id: form.value.category_id,
         variant: form.value.variant || null,
         size: form.value.size || null,

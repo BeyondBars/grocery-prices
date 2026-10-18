@@ -6,6 +6,7 @@ use App\Http\Requests\Receipt\UpdateReceiptRequest;
 use App\Http\Requests\Receipt\UploadReceiptsRequest;
 use App\Http\Resources\ReceiptResource;
 use App\Jobs\ProcessReceipt;
+use App\Matching\ReceiptItemMatcher;
 use App\Models\Receipt;
 use App\Receipts\ReceiptUploader;
 use App\Support\Enums\ReceiptStatus;
@@ -98,13 +99,19 @@ class ReceiptController extends Controller
     /**
      * Correct the header. A changed store or date moves the receipt's prices with it.
      */
-    public function update(UpdateReceiptRequest $request, Receipt $receipt): ReceiptResource
+    public function update(UpdateReceiptRequest $request, Receipt $receipt, ReceiptItemMatcher $matcher): ReceiptResource
     {
         $this->authorize('update', $receipt);
 
-        DB::transaction(function () use ($request, $receipt) {
+        DB::transaction(function () use ($request, $receipt, $matcher) {
             $receipt->update($request->validated());
+
+            if ($receipt->wasChanged('store_id')) {
+                $receipt->items->each(fn ($item) => $matcher->autoMatch($item->setRelation('receipt', $receipt)));
+            }
+
             $receipt->syncPriceObservations();
+            $receipt->refreshStatus();
         });
 
         return new ReceiptResource($receipt->load('store', 'items.product.brand', 'items.suggestedProduct'));

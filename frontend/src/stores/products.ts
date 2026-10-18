@@ -41,6 +41,16 @@ export const useProductStore = defineStore('products', {
       return data.data
     },
 
+    async searchProducts(search: string) {
+      const { data } = await http.get<Paginated<ProductResource>>('products', { params: { 'filter[search]': search } })
+      return data.data
+    },
+
+    async mergeProduct(id: number, intoId: number) {
+      await http.post(`products/${id}/merge`, { into_product_id: intoId }, { throwForbiddens: true })
+      await this.fetchProducts(this.page)
+    },
+
     async deleteProduct(id: number) {
       await http.delete(`products/${id}`, { throwForbiddens: true })
       await this.fetchProducts(this.page)

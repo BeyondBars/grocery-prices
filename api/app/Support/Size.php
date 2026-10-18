@@ -32,15 +32,37 @@ final readonly class Size
 
     public static function parse(?string $text): ?self
     {
-        $units = implode('|', array_keys(self::UNITS));
-
-        if (!$text || !preg_match("/(\d+(?:\.\d+)?)\s*({$units})\b/i", $text, $match)) {
+        if (!$text || !preg_match(self::pattern(), $text, $match)) {
             return null;
         }
 
         [$unit, $multiplier] = self::UNITS[strtoupper($match[2])];
 
         return new self(round((float) $match[1] * $multiplier, 3), $unit);
+    }
+
+    /**
+     * The text with its size removed: "PAULS MILK 2 LT" => "PAULS MILK ".
+     */
+    public static function strip(string $text): string
+    {
+        return preg_replace(self::pattern(), ' ', $text, 1);
+    }
+
+    /**
+     * The text with its size written one way: "PAULS MILK 2 LTR" => "PAULS MILK 2L", so the same
+     * product is remembered under one wording however the receipt spelled the size.
+     */
+    public static function standardise(string $text): string
+    {
+        $size = self::parse($text);
+
+        return $size ? trim(preg_replace('/\s+/', ' ', preg_replace(self::pattern(), ' '.strtoupper($size->label()).' ', $text, 1))) : $text;
+    }
+
+    private static function pattern(): string
+    {
+        return '/(\d+(?:\.\d+)?)\s*('.implode('|', array_keys(self::UNITS)).')\b/i';
     }
 
     /**

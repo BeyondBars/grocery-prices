@@ -1,5 +1,5 @@
 /** What the signed in user may do with a catalog entry (from the API policies). */
-export type CatalogPermissions = { update: boolean; delete: boolean }
+export type CatalogPermissions = { update: boolean; delete: boolean; merge?: boolean }
 
 /** Shape of App\Http\Resources\StoreResource. */
 export type StoreResource = {

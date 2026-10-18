@@ -1,4 +1,4 @@
-import type { ProductResource, StoreResource } from './catalog'
+import type { ProductPayload, ProductResource, StoreResource } from './catalog'
 
 export type ReceiptStatus = 'uploaded' | 'processing' | 'needs_review' | 'completed' | 'failed'
 export type MatchStatus = 'pending' | 'auto_matched' | 'suggested' | 'confirmed' | 'new_product' | 'ignored'
@@ -44,6 +44,29 @@ export type ReceiptResource = {
   items_count?: number
   items?: ReceiptItemResource[]
 }
+
+/** A product a receipt line could be, from GET /receipt-items/{id}/candidates. */
+export type MatchCandidate = {
+  product: ProductResource
+  /** 0-100 */
+  confidence: number
+  reason: string
+}
+
+/** A new product pre-filled from the receipt line. */
+export type NewProductDraft = {
+  name: string
+  brand: string | null
+  variant: string | null
+  size: string | null
+  pack_count: number
+  barcode: string | null
+}
+
+export type MatchPayload =
+  | { product_id: number }
+  | { ignore: boolean }
+  | { new_product: Omit<ProductPayload, 'brand_id'> & { brand_id: number | null } }
 
 export type ReceiptHeaderPayload = Partial<
   Pick<ReceiptResource, 'store_location' | 'purchased_at' | 'receipt_number' | 'total_cents'> & { store_id: number | null }

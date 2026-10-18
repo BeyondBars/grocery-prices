@@ -1,7 +1,16 @@
 import { defineStore } from 'pinia'
 import { http } from '@/utils/http'
 import type { Paginated } from '@/types/user'
-import type { ReceiptHeaderPayload, ReceiptItemPayload, ReceiptItemResource, ReceiptResource, ReceiptStatus } from '@/types/receipt'
+import type {
+  MatchCandidate,
+  MatchPayload,
+  NewProductDraft,
+  ReceiptHeaderPayload,
+  ReceiptItemPayload,
+  ReceiptItemResource,
+  ReceiptResource,
+  ReceiptStatus,
+} from '@/types/receipt'
 
 /** Statuses that change by themselves while the queue works on the receipt. */
 export const BUSY_STATUSES: ReceiptStatus[] = ['uploaded', 'processing']
@@ -57,6 +66,18 @@ export const useReceiptStore = defineStore('receipts', {
       if (this.receipt?.items) {
         this.receipt.items = this.receipt.items.map((item) => (item.id === id ? data.data : item))
       }
+    },
+
+    async fetchCandidates(itemId: number) {
+      const { data } = await http.get<{ data: MatchCandidate[]; new_product: NewProductDraft }>(`receipt-items/${itemId}/candidates`)
+      return data
+    },
+
+    /** Record the user's decision for a line. Reloads the receipt: its status and other lines may change. */
+    async matchItem(itemId: number, payload: MatchPayload) {
+      await http.post(`receipt-items/${itemId}/match`, payload)
+
+      if (this.receipt) await this.fetchReceipt(this.receipt.id)
     },
 
     async reprocess(id: number, ocr = false) {

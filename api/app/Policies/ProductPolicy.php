@@ -26,4 +26,12 @@ class ProductPolicy
     {
         return $user->can(UserAbility::ManageCatalog->value);
     }
+
+    /**
+     * Merging a duplicate moves every receipt and price to another product.
+     */
+    public function merge(User $user, Product $model): bool
+    {
+        return $user->can(UserAbility::ManageCatalog->value);
+    }
 }

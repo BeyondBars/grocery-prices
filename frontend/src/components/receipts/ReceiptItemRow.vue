@@ -1,18 +1,38 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useToast } from 'vue-toast-notification'
 import { useReceiptStore } from '@/stores/receipts'
 import { errorMessage } from '@/utils/api-errors'
 import { formatCents, toCents } from '@/utils/money'
+import { productLabel } from '@/utils/product'
+import MatchProductModal from './MatchProductModal.vue'
 import type { ReceiptItemResource } from '@/types/receipt'
 
-/** One receipt line. Tap the pencil to fix a misread name, quantity or price. */
+/** One receipt line and the product it is. Tap the pencil to fix a misread name, quantity or price. */
 const props = defineProps<{ item: ReceiptItemResource }>()
 
 const receiptStore = useReceiptStore()
 const toast = useToast()
 const isEditing = ref(false)
+const isChoosing = ref(false)
+const isMatched = computed(() => ['auto_matched', 'confirmed', 'new_product'].includes(props.item.match_status))
+
+const confirmSuggestion = async () => {
+  try {
+    await receiptStore.matchItem(props.item.id, { product_id: props.item.suggested_product!.id })
+  } catch (error) {
+    toast.error(errorMessage(error))
+  }
+}
+
+const undoIgnore = async () => {
+  try {
+    await receiptStore.matchItem(props.item.id, { ignore: false })
+  } catch (error) {
+    toast.error(errorMessage(error))
+  }
+}
 const isSaving = ref(false)
 const form = ref({ name: '', quantity: '', total: '', discount: '' })
 
@@ -79,11 +99,37 @@ const quantityLabel = (item: ReceiptItemResource) =>
 
     <div v-else class="flex items-start gap-3">
       <div class="min-w-0 flex-1">
-        <div class="font-medium break-words text-slate-900">{{ item.original_name }}</div>
+        <div class="font-medium break-words" :class="item.match_status === 'ignored' ? 'text-slate-400 line-through' : 'text-slate-900'">{{ item.original_name }}</div>
         <div class="mt-0.5 text-xs text-slate-500">
           <span v-if="item.quantity !== 1 || item.unit === 'kg'">{{ quantityLabel(item) }}</span>
           <span v-if="item.discount_cents" class="ml-2 font-semibold text-emerald-700">−{{ formatCents(item.discount_cents) }} off</span>
           <span v-if="item.sku" class="ml-2 font-mono">{{ item.sku }}</span>
+        </div>
+
+        <!-- The product this line is -->
+        <div class="mt-2 text-sm">
+          <button v-if="isMatched && item.product" type="button" class="inline-flex max-w-full items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-left text-emerald-800 hover:bg-emerald-100" title="Change product" @click="isChoosing = true">
+            <FontAwesomeIcon icon="check" class="shrink-0" />
+            <span class="truncate">{{ productLabel(item.product) }}</span>
+            <span v-if="item.match_status === 'auto_matched'" class="shrink-0 text-xs text-emerald-600">auto</span>
+          </button>
+
+          <div v-else-if="item.match_status === 'suggested' && item.suggested_product" class="flex flex-wrap items-center gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-amber-900">
+            <span>Is this <strong>{{ productLabel(item.suggested_product) }}</strong>?</span>
+            <span class="flex gap-1">
+              <button type="button" class="rounded bg-amber-600 px-2 py-0.5 text-xs font-semibold text-white hover:bg-amber-700" @click="confirmSuggestion">Yes</button>
+              <button type="button" class="rounded bg-white px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-300 hover:bg-amber-100" @click="isChoosing = true">No, choose…</button>
+            </span>
+          </div>
+
+          <div v-else-if="item.match_status === 'ignored'" class="flex items-center gap-2 text-xs text-slate-500">
+            Not a product
+            <button type="button" class="link" @click="undoIgnore">Undo</button>
+          </div>
+
+          <button v-else type="button" class="inline-flex items-center gap-1.5 rounded-md bg-brand-50 px-2 py-1 font-medium text-brand-700 hover:bg-brand-100" @click="isChoosing = true">
+            <FontAwesomeIcon icon="magnifying-glass" /> Choose product
+          </button>
         </div>
       </div>
       <div class="shrink-0 text-right tabular-nums">
@@ -94,5 +140,6 @@ const quantityLabel = (item: ReceiptItemResource) =>
         <FontAwesomeIcon icon="pen" />
       </button>
     </div>
+    <MatchProductModal v-if="isChoosing" :item="item" @close="isChoosing = false" />
   </li>
 </template>
