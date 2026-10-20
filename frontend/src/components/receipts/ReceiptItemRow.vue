@@ -123,7 +123,7 @@ const quantityLabel = (item: ReceiptItemResource) =>
           </div>
 
           <div v-else-if="item.match_status === 'ignored'" class="flex items-center gap-2 text-xs text-slate-500">
-            Not a product
+            Not a product<span v-if="item.matched_by === 'rule'" class="text-slate-400">· auto</span>
             <button type="button" class="link" @click="undoIgnore">Undo</button>
           </div>
 

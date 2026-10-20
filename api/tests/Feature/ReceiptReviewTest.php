@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Matching\ReceiptItemMatcher;
 use App\Models\Brand;
 use App\Models\PriceObservation;
 use App\Models\Product;
@@ -143,6 +144,47 @@ class ReceiptReviewTest extends TestCase
         $this->postJson("receipt-items/{$item->id}/match", ['ignore' => false])
             ->assertJsonPath('data.match_status', 'pending');
         $this->assertSame(ReceiptStatus::NeedsReview, $this->receipt->fresh()->status);
+    }
+
+    public function testFeesAndDepositsAreRecognisedAsNotProducts()
+    {
+        $matcher = app(ReceiptItemMatcher::class);
+
+        foreach (['BAG 15C', 'REUSABLE BAGS', 'CONTAINER DEPOSIT 10C', 'CASH ROUNDING'] as $line) {
+            $item = $this->item($line);
+            $matcher->autoMatch($item);
+            $this->assertSame([MatchStatus::Ignored, 'rule'], [$item->fresh()->match_status, $item->fresh()->matched_by->value], $line);
+        }
+
+        // "BAGEL" isn't a bag.
+        $bagel = $this->item('BAGELS 6PK');
+        $matcher->autoMatch($bagel);
+        $this->assertSame(MatchStatus::Pending, $bagel->fresh()->match_status);
+    }
+
+    public function testALineMarkedNotAProductIsSkippedNextTimeAtThatStore()
+    {
+        $item = $this->item('LOYALTY CARD SWIPE', ['total_price_cents' => 0]);
+        $waiting = ReceiptItem::factory()->for(Receipt::factory()->for($this->user)->state(['store_id' => $this->receipt->store_id, 'status' => ReceiptStatus::NeedsReview]))
+            ->create(['original_name' => 'LOYALTY CARD SWIPE', 'normalized_name' => 'LOYALTY CARD SWIPE', 'match_status' => MatchStatus::Pending]);
+
+        $this->be($this->user)->postJson("receipt-items/{$item->id}/match", ['ignore' => true])->assertSuccessful();
+
+        $this->assertDatabaseHas('ignored_wordings', ['store_id' => $this->receipt->store_id, 'normalized_text' => 'LOYALTY CARD SWIPE', 'confirmed_by' => $this->user->id]);
+        // The same wording waiting on another receipt is settled straight away...
+        $this->assertSame(MatchStatus::Ignored, $waiting->fresh()->match_status);
+        // ...and on new receipts from that store, but not other stores.
+        $next = $this->item('LOYALTY CARD SWIPE');
+        app(ReceiptItemMatcher::class)->autoMatch($next);
+        $this->assertSame(MatchStatus::Ignored, $next->fresh()->match_status);
+
+        $elsewhere = ReceiptItem::factory()->create(['original_name' => 'LOYALTY CARD SWIPE', 'match_status' => MatchStatus::Pending]);
+        app(ReceiptItemMatcher::class)->autoMatch($elsewhere);
+        $this->assertSame(MatchStatus::Pending, $elsewhere->fresh()->match_status);
+
+        // Undo forgets it.
+        $this->postJson("receipt-items/{$item->id}/match", ['ignore' => false])->assertJsonPath('data.match_status', 'pending');
+        $this->assertDatabaseCount('ignored_wordings', 0);
     }
 
     public function testAReceiptWithoutAStoreIsNotCompleted()

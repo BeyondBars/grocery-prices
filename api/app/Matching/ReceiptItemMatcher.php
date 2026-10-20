@@ -2,6 +2,7 @@
 
 namespace App\Matching;
 
+use App\Models\IgnoredWording;
 use App\Models\Product;
 use App\Models\ProductAlias;
 use App\Models\ReceiptItem;
@@ -13,7 +14,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Applies match decisions to receipt items: automatic ones from the matcher, and the user's
  * own (confirm, new product, ignore). Every decision rebuilds the item's price history entry,
- * and a user's decision is remembered as an alias so the same wording matches next time.
+ * and a user's decision is remembered (a product alias, or an ignored wording) so the same
+ * wording is settled automatically next time.
  */
 class ReceiptItemMatcher
 {
@@ -23,10 +25,18 @@ class ReceiptItemMatcher
 
     /**
      * Match automatically. Leaves decisions the user already made alone.
+     *
+     * @param  bool  $mayIgnore  false when the user just said the line IS a product
      */
-    public function autoMatch(ReceiptItem $item): void
+    public function autoMatch(ReceiptItem $item, bool $mayIgnore = true): void
     {
         if ($item->matched_by === MatchSource::User) {
+            return;
+        }
+
+        if ($mayIgnore && $this->isNotAProduct($item)) {
+            $this->markIgnoredByRule($item);
+
             return;
         }
 
@@ -77,13 +87,58 @@ class ReceiptItemMatcher
         DB::transaction(function () use ($item, $user, $ignore) {
             if ($ignore) {
                 $this->decide($item, $user, MatchStatus::Ignored, null);
+                IgnoredWording::firstOrCreate(
+                    ['store_id' => $item->receipt->store_id, 'normalized_text' => $item->normalized_name],
+                    ['confirmed_by' => $user->id],
+                );
             } else {
+                // Undo: stop skipping this wording at this store, then match the line normally.
+                IgnoredWording::where('store_id', $item->receipt->store_id)->where('normalized_text', $item->normalized_name)->delete();
                 $item->update(['matched_by' => null]);
-                $this->autoMatch($item);
+                $this->autoMatch($item, mayIgnore: false);
             }
 
             $item->receipt->refreshStatus();
         });
+
+        if ($ignore) {
+            $this->matchSameWordingElsewhere($item);
+        }
+    }
+
+    /**
+     * A fee, deposit or adjustment (config/matching.php), or a wording the user marked
+     * "not a product" at this store before.
+     */
+    private function isNotAProduct(ReceiptItem $item): bool
+    {
+        $text = mb_strtoupper($item->original_name);
+
+        foreach (config('matching.not_products') as $pattern) {
+            if (preg_match($pattern, $text)) {
+                return true;
+            }
+        }
+
+        return IgnoredWording::where('store_id', $item->receipt->store_id)
+            ->where('normalized_text', $this->normalisedText($item))
+            ->exists();
+    }
+
+    private function markIgnoredByRule(ReceiptItem $item): void
+    {
+        $item->update([
+            'normalized_name' => $this->normalisedText($item),
+            'product_id' => null,
+            'suggested_product_id' => null,
+            'match_status' => MatchStatus::Ignored,
+            'match_confidence' => 100,
+            'matched_by' => MatchSource::Rule,
+            'matched_by_user_id' => null,
+            'matched_at' => now(),
+        ]);
+
+        $item->syncPriceObservation();
     }
 
     private function decide(ReceiptItem $item, User $user, MatchStatus $status, ?Product $product): void

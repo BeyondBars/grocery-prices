@@ -63,6 +63,26 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Lines that are never products
+    |--------------------------------------------------------------------------
+    |
+    | Regular expressions (matched against the upper-cased line) for lines that are fees, deposits
+    | or adjustments. They're marked "not a product" automatically. Wordings a user marks "not a
+    | product" are remembered per store on top of these.
+    |
+    */
+
+    'not_products' => [
+        '/^(SHOPPING |REUSABLE |PAPER )?BAGS?\b/',
+        '/\bCONTAINER DEPOSIT\b/',
+        '/\bCDS\b/',
+        '/\bROUNDING\b/',
+        '/\bDONATION\b/',
+        '/\bGIFT ?CARD\b/',
+    ],
+
     'variant_markers' => [
         'FULL CREAM', 'LIGHT', 'SKIM', 'REDUCED FAT', 'LACTOSE FREE', 'A2',
         'ZERO SUGAR', 'ZERO', 'DIET', 'SUGAR FREE', 'MAX',
