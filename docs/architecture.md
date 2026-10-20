@@ -154,5 +154,5 @@ Endpoints: `apiResource /shopping-lists`, `GET /shopping-lists/{id}/comparison`,
 5. Price comparison + history chart ✔
 6. Shopping lists (per-store totals, split shop) ✔
 7. Dashboard ✔
-8. AI-assisted matching
+8. AI-assisted matching (deferred: rules + user confirmations are enough for now; plugs in behind `ProductMatcher` when wanted)
 9. Online supermarket prices and promotions
