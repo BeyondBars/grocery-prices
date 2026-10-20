@@ -7,7 +7,7 @@
     :class="open ? 'translate-x-0' : '-translate-x-full'"
   >
     <div class="flex items-center justify-between px-5 py-5">
-      <img class="h-8 w-auto" src="@/assets/img/logo/white-logo.png" alt="Home" />
+      <img class="h-8 w-auto" src="@/assets/img/logo/white-logo.png" alt="SheSaves" />
       <button type="button" class="rounded-md p-2 hover:bg-slate-800 lg:hidden" aria-label="Close menu" @click="emit('close')">
         <FontAwesomeIcon icon="xmark" />
       </button>

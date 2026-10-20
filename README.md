@@ -1,40 +1,23 @@
-# Laravel + Vue Starter
+# SheSaves
 
-A starter for apps that need a solid sign-in system: Laravel 13 API (PHP 8.4, `api/`, Sanctum SPA cookie
-auth, Bouncer roles) plus a Vue 3 + Pinia + Vite + Tailwind CSS 4 SPA (`frontend/`), run together with
-`docker-compose.yml`.
+Upload your grocery receipts and SheSaves builds a price history for every product you buy, then
+tells you where each one (or your whole shopping list) is cheapest. Made for Australian supermarkets.
 
-Included: sign-up with email verification, sign-in, Google/Facebook login, 2-step verification by email or
-SMS, password reset, terms acceptance, user management, roles and an account page. Nothing app-specific.
+- **Receipts:** upload photos or PDFs; items, prices, discounts, store and date are read
+  automatically (PDF text, or AWS Textract for photos) and queued for a quick review.
+- **Products:** receipt lines are matched to products by brand, size and variant, so "PAULS FC
+  MILK 2 LT" and "PAULS FULL CREAM MILK 2L" are the same product but 1.25L and 2L never are.
+  Every confirmation is remembered.
+- **Prices:** latest price at each store, cheapest store, savings, lowest / highest / average and
+  a price history chart.
+- **Shopping lists:** totals per store, which stores are missing prices, and a split-shop plan.
+- **Dashboard:** potential savings, price changes and the biggest savings opportunities.
 
-## Building an app on this starter
+Laravel 13 API (`api/`) and Vue 3 + Tailwind CSS SPA (`frontend/`), run with `docker-compose.yml`.
+The design, data model and matching rules are in [docs/architecture.md](docs/architecture.md).
 
-Create the app from this repo and keep it linked, so auth fixes made here can be pulled in later:
-
-```sh
-git clone git@github.com:BeyondBars/<this-repo>.git my-app
-cd my-app
-git remote rename origin upstream
-git remote add origin git@github.com:BeyondBars/my-app.git
-git push -u origin main
-```
-
-Pull starter changes when you want them:
-
-```sh
-git fetch upstream
-git merge upstream/main          # everything
-git cherry-pick <commit-hash>    # one specific fix
-```
-
-To keep merges painless:
-
-- Fix auth and shared-shell problems **here**, then pull them into the app. Keep starter commits focused
-  (one fix per commit) so they can be cherry-picked.
-- In the app, extend rather than edit starter files where you can. App-specific user data goes in its own
-  table rather than new columns on `users`; app pages go in new route files under `frontend/src/router/routes/`.
-- Rebrand by changing the `--color-brand-*` values in `frontend/src/assets/css/app.css` and replacing
-  `frontend/src/assets/img/logo/logo.png` and `white-logo.png`. Everything else uses those.
+Built on the `htb-backend-base` starter (sign-in, 2FA, users and roles). The two repositories don't
+share git history, so starter fixes are copied across by hand.
 
 ## Email templates
 
@@ -71,6 +54,11 @@ docker compose run --rm fpm php artisan key:generate
 docker compose up -d
 docker compose exec fpm php artisan migrate --seed
 ```
+
+`migrate --seed` also adds the Australian supermarkets and a category tree (`CatalogSeeder`). Receipts
+are read by the `queue` service, so keep `QUEUE_CONNECTION=database` in `api/.env`. PDF receipts work out
+of the box; to read photos, set up AWS Textract (see "Turning on photo OCR" in
+[docs/architecture.md](docs/architecture.md)).
 
 | Service             | URL                   |
 | ------------------- | --------------------- |
