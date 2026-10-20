@@ -81,6 +81,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/receipt-items/{receiptItem}/candidates', [Controllers\ReceiptItemController::class, 'candidates']);
         Route::post('/receipt-items/{receiptItem}/match', [Controllers\ReceiptItemController::class, 'match']);
 
+        // Dashboard
+        Route::get('/dashboard', Controllers\DashboardController::class);
+
         // Shopping lists (private to the user who made them)
         Route::apiResource('shopping-lists', Controllers\ShoppingListController::class);
         Route::get('/shopping-lists/{shopping_list}/comparison', [Controllers\ShoppingListController::class, 'comparison']);

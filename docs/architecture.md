@@ -132,6 +132,19 @@ can be linked to a product later. Adding a product that's already on the list ad
 Endpoints: `apiResource /shopping-lists`, `GET /shopping-lists/{id}/comparison`,
 `POST|PUT|DELETE /shopping-lists/{id}/items[/{item}]`. Merging products moves list items too.
 
+## Dashboard (Phase 7)
+
+`GET /dashboard` (`App\Pricing\Dashboard`), all from the prices the user may see:
+
+- **Counts:** receipts, receipts needing review, products and stores with prices.
+- **Spent this month** (receipt totals) and **potential savings this month**: for each item bought
+  this month, what it cost above the cheapest current price for that product, times the quantity.
+- **Got cheaper / got dearer:** a store's latest price differs from its previous one, changed in the
+  last 30 days.
+- **Biggest savings opportunities:** products bought in the last 90 days where the last price paid
+  is above the cheapest current price at another store.
+- **Recent receipts**, newest shop first.
+
 ## Phases
 
 1. Design ✔
@@ -140,6 +153,6 @@ Endpoints: `apiResource /shopping-lists`, `GET /shopping-lists/{id}/comparison`,
 4. Product matching + review screen ✔
 5. Price comparison + history chart ✔
 6. Shopping lists (per-store totals, split shop) ✔
-7. Dashboard
+7. Dashboard ✔
 8. AI-assisted matching
 9. Online supermarket prices and promotions
